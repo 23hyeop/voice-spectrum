@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Voice Spectrum</title>
-<script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -241,16 +240,6 @@ body.theme-pastel footer{color:#c0b0e0;}
       <button class="exp-btn" id="audioRecBtn" onclick="toggleAudioRec()">● 녹음 시작</button>
     </div>
     <div class="export-card">
-      <div class="exp-icon">🎞</div>
-      <div class="exp-label">GIF 녹화</div>
-      <div class="exp-desc">파형을 GIF 애니메이션으로 저장</div>
-      <div class="exp-ctrl">
-        <input type="number" id="gifDur" min="5" max="10" value="7">
-        <span>초 (5~10)</span>
-      </div>
-      <button class="exp-btn" id="gifBtn" onclick="startGifRec()">● GIF 녹화</button>
-    </div>
-    <div class="export-card">
       <div class="exp-icon">🎬</div>
       <div class="exp-label">MP4 녹화</div>
       <div class="exp-desc">파형 영상으로 저장</div>
@@ -276,7 +265,6 @@ body.theme-pastel footer{color:#c0b0e0;}
   var energyHistory = [], bpmBeats = [], lastBeatTime = 0;
   var pcmSamples = [], scriptProc = null, audioRecording = false, audioRecTimer = null;
   var videoRec = null, videoChunks = [];
-  var gifCapturing = false;
 
   var THEMES = {
     light:  {bg:'#ffffff', line:'rgba(0,0,0,0.035)',     hs:168, hr:178, lt:38, sb:62},
@@ -586,36 +574,6 @@ body.theme-pastel footer{color:#c0b0e0;}
     setTimeout(function(){if(videoRec&&videoRec.state==='recording')videoRec.stop();},dur*1000);
   };
 
-  /* ── GIF ── */
-  window.startGifRec = function(){
-    if(!audioCtx){alert('먼저 오디오를 시작해주세요.');return;}
-    if(typeof GIF==='undefined'){alert('GIF 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');return;}
-    if(gifCapturing) return;
-    var dur=Math.max(5,Math.min(10,parseInt(document.getElementById('gifDur').value)||7));
-    var w=Math.round(canvas.width/DPR), h=Math.round(canvas.height/DPR);
-    var gif=new GIF({workers:2,quality:8,width:w,height:h,
-      workerScript:'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'});
-    var fps=12, max=dur*fps, count=0;
-    var tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
-    var tc=tmp.getContext('2d');
-    gifCapturing=true;
-    var btn=document.getElementById('gifBtn'); btn.textContent='■ 캡처 중…'; btn.classList.add('active');
-    function frame(){
-      if(!gifCapturing||count>=max){
-        gifCapturing=false; btn.textContent='⏳ 인코딩 중…';
-        gif.on('finished',function(blob){
-          var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-          a.download='spectrum-'+Date.now()+'.gif'; a.click();
-          btn.textContent='● GIF 녹화'; btn.classList.remove('active');
-        });
-        gif.render(); return;
-      }
-      tc.drawImage(canvas,0,0,w,h);
-      gif.addFrame(tmp,{copy:true,delay:Math.round(1000/fps)});
-      count++; setTimeout(frame,1000/fps);
-    }
-    frame();
-  };
 
   clearCanvas();
 })();
