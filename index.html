@@ -1,54 +1,145 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Voice Spectrum</title>
+<script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
 <style>
-
-
-
-
-
-
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f2f5;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px 56px;color:#111;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f2f5;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 24px 60px;color:#111;transition:background .3s,color .3s;}
+body.theme-dark{background:#080812;color:#e0e0f0;}
+body.theme-neon{background:#000;color:#fff;}
+body.theme-pastel{background:#f6f0ff;color:#3a3060;}
 
-header{width:100%;max-width:920px;display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:40px;}
-.logo-title{display:block;font-size:1.15rem;font-weight:700;letter-spacing:6px;text-transform:uppercase;color:#111;line-height:1;margin-bottom:5px;}
-.logo-sub{display:block;font-size:0.64rem;font-weight:700;letter-spacing:3.5px;color:#bbb;text-transform:uppercase;}
+header{width:100%;max-width:940px;display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:32px;}
+.logo-title{display:block;font-size:1.1rem;font-weight:700;letter-spacing:6px;text-transform:uppercase;line-height:1;margin-bottom:4px;}
+.logo-sub{display:block;font-size:.62rem;font-weight:600;letter-spacing:3px;color:#bbb;text-transform:uppercase;}
+body.theme-dark .logo-sub,body.theme-neon .logo-sub{color:#334;}
+body.theme-pastel .logo-sub{color:#b0a0d0;}
 
-.status-pill{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:#fff;border:1px solid #e8e8e8;}
-.status-dot{width:6px;height:6px;border-radius:50%;background:#d0d0d0;transition:background 0.3s;flex-shrink:0;}
-.status-dot.live{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.18);animation:dp 1.4s ease-in-out infinite;}
-@keyframes dp{0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,0.18);}50%{box-shadow:0 0 0 7px rgba(34,197,94,0.06);}}
-.status-text{font-size:0.68rem;font-weight:500;letter-spacing:1px;color:#bbb;white-space:nowrap;}
+.status-pill{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:#fff;border:1px solid #e8e8e8;transition:background .3s,border-color .3s;}
+body.theme-dark .status-pill,body.theme-neon .status-pill{background:#0f0f1e;border-color:#1e1e32;}
+body.theme-pastel .status-pill{background:#fff;border-color:#ddd0f0;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:#d0d0d0;flex-shrink:0;transition:background .3s;}
+.status-dot.live{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18);animation:dp 1.4s ease-in-out infinite;}
+@keyframes dp{0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,.18);}50%{box-shadow:0 0 0 7px rgba(34,197,94,.06);}}
+.status-text{font-size:.68rem;font-weight:500;letter-spacing:1px;color:#bbb;}
 .status-text.live{color:#22c55e;}
 
-.vu-section{width:100%;max-width:920px;margin-bottom:20px;}
-.vu-label-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px;}
-.vu-label{font-size:0.62rem;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#aaa;}
-.vu-db{font-size:0.72rem;font-weight:500;letter-spacing:0.5px;color:#bbb;font-variant-numeric:tabular-nums;}
+.vu-section{width:100%;max-width:940px;margin-bottom:16px;}
+.vu-label-row{display:flex;justify-content:space-between;margin-bottom:8px;}
+.vu-label{font-size:.6rem;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#aaa;}
+body.theme-dark .vu-label,body.theme-neon .vu-label{color:#334;}
+body.theme-pastel .vu-label{color:#b0a0cc;}
+.vu-db{font-size:.7rem;font-weight:500;color:#bbb;font-variant-numeric:tabular-nums;}
+body.theme-dark .vu-db,body.theme-neon .vu-db{color:#334;}
 .vu-track{width:100%;height:2px;background:#e2e2e6;border-radius:2px;overflow:hidden;}
-.vu-fill{height:100%;width:0%;border-radius:2px;background:linear-gradient(90deg,#67e8c8,#60b4f5,#a78bfa,#f472b6);transition:width 0.055s linear;}
+body.theme-dark .vu-track,body.theme-neon .vu-track{background:#1a1a2e;}
+body.theme-pastel .vu-track{background:#e8dff8;}
+.vu-fill{height:100%;width:0%;background:linear-gradient(90deg,#67e8c8,#60b4f5,#a78bfa,#f472b6);transition:width .055s linear;border-radius:2px;}
 
-.spectrum-card{width:100%;max-width:920px;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 24px rgba(0,0,0,0.05),0 12px 48px rgba(0,0,0,0.04);margin-bottom:32px;}
-#freqCanvas{display:block;width:100%;height:380px;will-change:transform;transform:translateZ(0);}
+.toolbar{width:100%;max-width:940px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.toolbar-group{display:flex;align-items:center;gap:10px;}
+.toolbar-label{font-size:.62rem;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#bbb;white-space:nowrap;}
+body.theme-dark .toolbar-label,body.theme-neon .toolbar-label{color:#334;}
+body.theme-pastel .toolbar-label{color:#b0a0cc;}
+.seg{display:flex;background:#e8e8ec;border-radius:8px;padding:3px;gap:2px;}
+body.theme-dark .seg,body.theme-neon .seg{background:#0d0d1e;}
+body.theme-pastel .seg{background:#ebe4f8;}
+.seg-btn{padding:6px 14px;border:none;background:transparent;border-radius:6px;font-size:.72rem;font-weight:600;letter-spacing:.5px;cursor:pointer;color:#888;transition:all .15s;white-space:nowrap;font-family:inherit;}
+body.theme-dark .seg-btn,body.theme-neon .seg-btn{color:#445;}
+body.theme-pastel .seg-btn{color:#9080c0;}
+.seg-btn.active{background:#fff;color:#111;box-shadow:0 1px 4px rgba(0,0,0,.1);}
+body.theme-dark .seg-btn.active,body.theme-neon .seg-btn.active{background:#1a1a2e;color:#aab;}
+body.theme-pastel .seg-btn.active{background:#fff;color:#5030a0;}
 
-.controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;}
-.btn{padding:11px 30px;border-radius:100px;border:none;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:0.78rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;transition:transform 0.15s,box-shadow 0.15s,background 0.15s;outline:none;}
-.btn-dark{background:#111;color:#fff;}
-.btn-dark:hover{background:#2a2a2a;transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,0.18);}
-.btn-light{background:#fff;color:#333;border:1.5px solid #e0e0e0;}
-.btn-light:hover{border-color:#bbb;transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,0.07);}
-.btn:disabled{opacity:0.22;cursor:not-allowed;transform:none !important;box-shadow:none !important;}
+.spectrum-card{width:100%;max-width:940px;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04),0 4px 24px rgba(0,0,0,.05),0 12px 48px rgba(0,0,0,.04);margin-bottom:20px;transition:background .3s;}
+body.theme-dark .spectrum-card{background:#0e0e1c;}
+body.theme-neon .spectrum-card{background:#020208;}
+body.theme-pastel .spectrum-card{background:#fff;}
+#specCanvas{display:block;width:100%;height:360px;will-change:transform;transform:translateZ(0);}
 
-.hint{font-size:0.7rem;font-weight:400;letter-spacing:0.3px;color:#bbb;text-align:center;max-width:440px;line-height:1.75;min-height:1.2em;}
+.audio-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;}
+.hint{font-size:.7rem;color:#bbb;text-align:center;max-width:440px;line-height:1.75;min-height:1.2em;margin-bottom:10px;}
 .hint.err{color:#f87171;}
-footer{margin-top:52px;font-size:0.58rem;font-weight:400;letter-spacing:2.5px;color:#ccc;text-transform:uppercase;}
+
+.analysis-section{width:100%;max-width:940px;margin-bottom:20px;}
+.analysis-toggles{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.toggle-btn{padding:8px 20px;border-radius:100px;border:1.5px solid #e0e0e0;background:#fff;color:#555;font-size:.75rem;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all .15s;font-family:inherit;}
+body.theme-dark .toggle-btn,body.theme-neon .toggle-btn{background:#0d0d1e;border-color:#1e1e32;color:#445;}
+body.theme-pastel .toggle-btn{background:#fff;border-color:#ddd0f0;color:#9080c0;}
+.toggle-btn.active{background:#111;border-color:#111;color:#fff;}
+body.theme-dark .toggle-btn.active,body.theme-neon .toggle-btn.active{background:#1e1e3a;border-color:#3a3a6a;color:#aab;}
+body.theme-pastel .toggle-btn.active{background:#7050c0;border-color:#7050c0;color:#fff;}
+.analysis-panel{background:#fafafa;border:1px solid #eee;border-radius:16px;padding:18px 24px;display:flex;flex-wrap:wrap;gap:24px;}
+body.theme-dark .analysis-panel,body.theme-neon .analysis-panel{background:#0a0a16;border-color:#1a1a2e;}
+body.theme-pastel .analysis-panel{background:#faf6ff;border-color:#ecdff8;}
+.bpm-display{display:flex;align-items:baseline;gap:8px;}
+.bpm-num{font-size:2.4rem;font-weight:700;color:#111;font-variant-numeric:tabular-nums;line-height:1;}
+body.theme-dark .bpm-num,body.theme-neon .bpm-num{color:#aab;}
+body.theme-pastel .bpm-num{color:#5030a0;}
+.bpm-unit{font-size:.65rem;font-weight:600;letter-spacing:2px;color:#bbb;text-transform:uppercase;}
+.bands-display{flex:1;display:flex;flex-direction:column;gap:8px;min-width:200px;}
+.band-row{display:flex;align-items:center;gap:10px;}
+.band-name{font-size:.65rem;font-weight:600;letter-spacing:1px;color:#aaa;width:28px;text-align:right;}
+body.theme-dark .band-name,body.theme-neon .band-name{color:#334;}
+.band-track{flex:1;height:4px;background:#e8e8ec;border-radius:2px;overflow:hidden;}
+body.theme-dark .band-track,body.theme-neon .band-track{background:#1a1a2e;}
+body.theme-pastel .band-track{background:#ecdff8;}
+.band-fill{height:100%;width:0%;border-radius:2px;transition:width .1s;}
+.band-val{font-size:.65rem;font-weight:600;color:#aaa;width:32px;text-align:right;font-variant-numeric:tabular-nums;}
+body.theme-dark .band-val,body.theme-neon .band-val{color:#334;}
+
+.btn{padding:10px 26px;border-radius:100px;border:none;cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;transition:transform .15s,box-shadow .15s,background .15s;outline:none;}
+.btn-dark{background:#111;color:#fff;}
+.btn-dark:hover{background:#2a2a2a;transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,.18);}
+body.theme-dark .btn-dark,body.theme-neon .btn-dark{background:#1e1e3a;color:#aab;}
+body.theme-dark .btn-dark:hover,body.theme-neon .btn-dark:hover{background:#2a2a4a;}
+body.theme-pastel .btn-dark{background:#7050c0;color:#fff;}
+body.theme-pastel .btn-dark:hover{background:#5030a0;}
+.btn-light{background:#fff;color:#333;border:1.5px solid #e0e0e0;}
+.btn-light:hover{border-color:#bbb;transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.07);}
+body.theme-dark .btn-light,body.theme-neon .btn-light{background:#0d0d1e;color:#aab;border-color:#1e1e32;}
+body.theme-pastel .btn-light{background:#fff;color:#7050c0;border-color:#ddd0f0;}
+.btn:disabled{opacity:.22;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
+.btn.active{background:#e11d48!important;border-color:#e11d48!important;color:#fff!important;}
+
+.export-section{width:100%;max-width:940px;margin-top:8px;}
+.section-title{font-size:.65rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#bbb;margin-bottom:16px;}
+body.theme-dark .section-title,body.theme-neon .section-title{color:#334;}
+body.theme-pastel .section-title{color:#b0a0cc;}
+.export-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(196px,1fr));gap:14px;}
+.export-card{background:#fff;border:1px solid #eee;border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:8px;transition:background .3s,border-color .3s;}
+body.theme-dark .export-card,body.theme-neon .export-card{background:#0d0d1e;border-color:#1a1a2e;}
+body.theme-pastel .export-card{background:#fff;border-color:#ecdff8;}
+.exp-icon{font-size:1.4rem;line-height:1;}
+.exp-label{font-size:.82rem;font-weight:700;letter-spacing:.5px;}
+body.theme-dark .exp-label,body.theme-neon .exp-label{color:#aab;}
+body.theme-pastel .exp-label{color:#5030a0;}
+.exp-desc{font-size:.68rem;color:#aaa;letter-spacing:.3px;}
+body.theme-dark .exp-desc,body.theme-neon .exp-desc{color:#334;}
+body.theme-pastel .exp-desc{color:#b0a0cc;}
+.exp-ctrl{display:flex;align-items:center;gap:6px;margin-top:2px;}
+.exp-ctrl input[type=number]{width:54px;padding:5px 8px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:.8rem;font-weight:600;text-align:center;outline:none;font-family:inherit;background:#fafafa;color:#111;}
+body.theme-dark .exp-ctrl input,body.theme-neon .exp-ctrl input{background:#0a0a16;border-color:#1e1e32;color:#aab;}
+body.theme-pastel .exp-ctrl input{background:#faf6ff;border-color:#ddd0f0;color:#5030a0;}
+.exp-ctrl input:focus{border-color:#a78bfa;}
+.exp-ctrl span{font-size:.7rem;color:#aaa;}
+.exp-btn{margin-top:4px;width:100%;padding:9px 16px;font-size:.72rem;border-radius:100px;border:none;cursor:pointer;font-family:inherit;font-weight:600;letter-spacing:1px;text-transform:uppercase;background:#111;color:#fff;transition:all .15s;outline:none;}
+body.theme-dark .exp-btn,body.theme-neon .exp-btn{background:#1e1e3a;color:#aab;}
+body.theme-pastel .exp-btn{background:#7050c0;color:#fff;}
+.exp-btn:hover{opacity:.85;transform:translateY(-1px);}
+.exp-btn.active{background:#e11d48!important;color:#fff!important;}
+
+footer{margin-top:52px;font-size:.58rem;font-weight:400;letter-spacing:2.5px;color:#ccc;text-transform:uppercase;}
+body.theme-dark footer,body.theme-neon footer{color:#222;}
+body.theme-pastel footer{color:#c0b0e0;}
 </style>
 </head>
-<body>
+<body class="theme-light">
+
 <header>
   <div class="logo">
     <span class="logo-title">Voice Spectrum</span>
@@ -59,6 +150,7 @@ footer{margin-top:52px;font-size:0.58rem;font-weight:400;letter-spacing:2.5px;co
     <span class="status-text" id="statusText">Stopped</span>
   </div>
 </header>
+
 <div class="vu-section">
   <div class="vu-label-row">
     <span class="vu-label">Level</span>
@@ -66,22 +158,133 @@ footer{margin-top:52px;font-size:0.58rem;font-weight:400;letter-spacing:2.5px;co
   </div>
   <div class="vu-track"><div class="vu-fill" id="vuFill"></div></div>
 </div>
-<div class="spectrum-card">
-  <canvas id="freqCanvas"></canvas>
+
+<div class="toolbar">
+  <div class="toolbar-group">
+    <span class="toolbar-label">시각 모드</span>
+    <div class="seg">
+      <button class="seg-btn active" data-view="linear" onclick="setView('linear')">Bar</button>
+      <button class="seg-btn" data-view="circular" onclick="setView('circular')">Circular</button>
+    </div>
+  </div>
+  <div class="toolbar-group">
+    <span class="toolbar-label">색상 테마</span>
+    <div class="seg">
+      <button class="seg-btn active" data-theme="light" onclick="setTheme('light')">Light</button>
+      <button class="seg-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
+      <button class="seg-btn" data-theme="neon" onclick="setTheme('neon')">Neon</button>
+      <button class="seg-btn" data-theme="pastel" onclick="setTheme('pastel')">Pastel</button>
+    </div>
+  </div>
 </div>
-<div class="controls">
-  <button class="btn btn-dark"  id="sysBtn" onclick="startSystemAudio()">System Audio</button>
-  <button class="btn btn-light" id="micBtn"  onclick="startMic()">Microphone</button>
+
+<div class="spectrum-card">
+  <canvas id="specCanvas"></canvas>
+</div>
+
+<div class="audio-row">
+  <button class="btn btn-dark" id="sysBtn" onclick="startSystemAudio()">System Audio</button>
+  <button class="btn btn-light" id="micBtn" onclick="startMic()">Microphone</button>
   <button class="btn btn-light" id="stopBtn" onclick="stopAudio()" disabled>Stop</button>
 </div>
 <div class="hint" id="hint"></div>
+
+<div class="analysis-section">
+  <div class="analysis-toggles">
+    <button class="toggle-btn" id="bpmBtn" onclick="toggleBPM()">BPM 감지</button>
+    <button class="toggle-btn" id="bandsBtn" onclick="toggleBands()">대역별 레벨</button>
+  </div>
+  <div class="analysis-panel" id="analysisPanel" style="display:none">
+    <div id="bpmDisplay" style="display:none">
+      <div class="bpm-display">
+        <span class="bpm-num" id="bpmValue">--</span>
+        <span class="bpm-unit">BPM</span>
+      </div>
+    </div>
+    <div class="bands-display" id="bandsDisplay" style="display:none">
+      <div class="band-row">
+        <span class="band-name">저음</span>
+        <div class="band-track"><div class="band-fill" id="bassBar" style="background:#22c55e"></div></div>
+        <span class="band-val" id="bassVal">0%</span>
+      </div>
+      <div class="band-row">
+        <span class="band-name">중음</span>
+        <div class="band-track"><div class="band-fill" id="midBar" style="background:#60b4f5"></div></div>
+        <span class="band-val" id="midVal">0%</span>
+      </div>
+      <div class="band-row">
+        <span class="band-name">고음</span>
+        <div class="band-track"><div class="band-fill" id="highBar" style="background:#f472b6"></div></div>
+        <span class="band-val" id="highVal">0%</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="export-section">
+  <div class="section-title">녹음 &amp; 내보내기</div>
+  <div class="export-grid">
+    <div class="export-card">
+      <div class="exp-icon">📷</div>
+      <div class="exp-label">스크린샷</div>
+      <div class="exp-desc">Canvas를 PNG로 즉시 저장</div>
+      <button class="exp-btn" onclick="takeScreenshot()">저장</button>
+    </div>
+    <div class="export-card">
+      <div class="exp-icon">🎵</div>
+      <div class="exp-label">오디오 녹음</div>
+      <div class="exp-desc">최대 60초 · MP3</div>
+      <div class="exp-ctrl">
+        <input type="number" id="audioDur" min="1" max="60" value="30">
+        <span>초 (1~60)</span>
+      </div>
+      <button class="exp-btn" id="audioRecBtn" onclick="toggleAudioRec()">● 녹음 시작</button>
+    </div>
+    <div class="export-card">
+      <div class="exp-icon">🎞</div>
+      <div class="exp-label">GIF 녹화</div>
+      <div class="exp-desc">파형을 GIF 애니메이션으로 저장</div>
+      <div class="exp-ctrl">
+        <input type="number" id="gifDur" min="5" max="10" value="7">
+        <span>초 (5~10)</span>
+      </div>
+      <button class="exp-btn" id="gifBtn" onclick="startGifRec()">● GIF 녹화</button>
+    </div>
+    <div class="export-card">
+      <div class="exp-icon">🎬</div>
+      <div class="exp-label">MP4 녹화</div>
+      <div class="exp-desc">파형 영상으로 저장</div>
+      <div class="exp-ctrl">
+        <input type="number" id="mp4Dur" min="5" max="15" value="10">
+        <span>초 (5~15)</span>
+      </div>
+      <button class="exp-btn" id="mp4Btn" onclick="startVideoRec()">● MP4 녹화</button>
+    </div>
+  </div>
+</div>
+
 <footer>Voice Spectrum &nbsp;&middot;&nbsp; Web Audio API &nbsp;&middot;&nbsp; 2026</footer>
+
 <script>
 (function(){
-  var audioCtx, analyser, source, stream, animId;
   var DPR = window.devicePixelRatio || 1;
-  var canvas = document.getElementById('freqCanvas');
+  var canvas = document.getElementById('specCanvas');
   var ctx = canvas.getContext('2d');
+  var audioCtx, analyser, source, stream, animId;
+  var viewMode = 'linear', themeName = 'light';
+  var showBPM = false, showBands = false;
+  var energyHistory = [], bpmBeats = [], lastBeatTime = 0;
+  var pcmSamples = [], scriptProc = null, audioRecording = false, audioRecTimer = null;
+  var videoRec = null, videoChunks = [];
+  var gifCapturing = false;
+
+  var THEMES = {
+    light:  {bg:'#ffffff', line:'rgba(0,0,0,0.035)',     hs:168, hr:178, lt:38, sb:62},
+    dark:   {bg:'#0e0e1c', line:'rgba(255,255,255,0.04)', hs:180, hr:165, lt:55, sb:78},
+    neon:   {bg:'#020208', line:'rgba(255,255,255,0.03)', hs:60,  hr:240, lt:48, sb:100},
+    pastel: {bg:'#ffffff', line:'rgba(0,0,0,0.02)',       hs:200, hr:120, lt:55, sb:45}
+  };
+  function T(){ return THEMES[themeName]; }
 
   function resize(){
     canvas.width  = canvas.offsetWidth  * DPR;
@@ -90,50 +293,58 @@ footer{margin-top:52px;font-size:0.58rem;font-weight:400;letter-spacing:2.5px;co
   window.addEventListener('resize', resize);
   resize();
 
-  function setHint(html, isErr){
-    var el = document.getElementById('hint');
-    el.innerHTML = html;
-    el.className = 'hint' + (isErr ? ' err' : '');
+  window.setView = function(mode){
+    viewMode = mode;
+    document.querySelectorAll('[data-view]').forEach(function(b){
+      b.classList.toggle('active', b.dataset.view === mode);
+    });
+  };
+
+  window.setTheme = function(name){
+    themeName = name;
+    document.body.className = 'theme-' + name;
+    document.querySelectorAll('[data-theme]').forEach(function(b){
+      b.classList.toggle('active', b.dataset.theme === name);
+    });
+    if(!animId) clearCanvas();
+  };
+
+  function refreshPanel(){
+    var show = showBPM || showBands;
+    document.getElementById('analysisPanel').style.display = show ? 'flex' : 'none';
+    document.getElementById('bpmDisplay').style.display   = showBPM   ? 'block' : 'none';
+    document.getElementById('bandsDisplay').style.display = showBands ? 'flex'  : 'none';
   }
 
-  function setUI(live){
-    document.getElementById('sysBtn').disabled  = live;
-    document.getElementById('micBtn').disabled  = live;
-    document.getElementById('stopBtn').disabled = !live;
-    document.getElementById('statusDot').className   = 'status-dot'  + (live ? ' live' : '');
-    document.getElementById('statusText').textContent = live ? 'Live' : 'Stopped';
-    document.getElementById('statusText').className  = 'status-text' + (live ? ' live' : '');
-    if(!live){
-      document.getElementById('vuFill').style.width = '0%';
-      document.getElementById('vuDb').textContent   = '-- dB';
-    }
-  }
+  window.toggleBPM = function(){
+    showBPM = !showBPM;
+    document.getElementById('bpmBtn').classList.toggle('active', showBPM);
+    if(!showBPM){ energyHistory=[]; bpmBeats=[]; document.getElementById('bpmValue').textContent='--'; }
+    refreshPanel();
+  };
+  window.toggleBands = function(){
+    showBands = !showBands;
+    document.getElementById('bandsBtn').classList.toggle('active', showBands);
+    refreshPanel();
+  };
 
   window.startSystemAudio = function(){
-    setHint('화면 선택 후 하단의 <b>"시스템 오디오 공유"</b> 체크박스를 켜고 공유를 눌러주세요.');
-    navigator.mediaDevices.getDisplayMedia({ audio: true, video: { width:1, height:1 } })
+    setHint('화면 선택 후 <b>"시스템 오디오 공유"</b> 체크박스를 켜고 공유를 눌러주세요.');
+    navigator.mediaDevices.getDisplayMedia({audio:true, video:{width:1,height:1}})
       .then(function(s){
         stream = s;
         stream.getVideoTracks().forEach(function(t){ t.stop(); });
-        if(!stream.getAudioTracks().length){
-          setHint('"시스템 오디오 공유"를 체크했는지 확인하세요.', true);
-          stream.getTracks().forEach(function(t){ t.stop(); });
-          return;
-        }
-        setHint('');
-        initAudio();
+        if(!stream.getAudioTracks().length){ setHint('"시스템 오디오 공유"를 체크했는지 확인하세요.',true); return; }
+        setHint(''); initAudio();
       })
-      .catch(function(e){
-        if(e.name !== 'NotAllowedError') setHint('오류: ' + e.message, true);
-        else setHint('');
-      });
+      .catch(function(e){ if(e.name!=='NotAllowedError') setHint('오류: '+e.message,true); else setHint(''); });
   };
 
   window.startMic = function(){
     setHint('');
-    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-      .then(function(s){ stream = s; initAudio(); })
-      .catch(function(e){ setHint('마이크 오류: ' + e.message, true); });
+    navigator.mediaDevices.getUserMedia({audio:true, video:false})
+      .then(function(s){ stream=s; initAudio(); })
+      .catch(function(e){ setHint('마이크 오류: '+e.message,true); });
   };
 
   function initAudio(){
@@ -144,142 +355,267 @@ footer{margin-top:52px;font-size:0.58rem;font-weight:400;letter-spacing:2.5px;co
     source = audioCtx.createMediaStreamSource(stream);
     source.connect(analyser);
     stream.getAudioTracks()[0].addEventListener('ended', window.stopAudio);
-    setUI(true);
-    loop();
+    setUI(true); loop();
   }
 
   window.stopAudio = function(){
-    if(animId){ cancelAnimationFrame(animId); animId = null; }
-    if(source){ source.disconnect(); source = null; }
-    if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
-    if(audioCtx){ audioCtx.close(); audioCtx = null; }
-    analyser = null;
-    setUI(false);
-    clearCanvas();
+    if(animId){ cancelAnimationFrame(animId); animId=null; }
+    if(audioRecording) stopAudioRecInternal(false);
+    if(source){ source.disconnect(); source=null; }
+    if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream=null; }
+    if(audioCtx){ audioCtx.close(); audioCtx=null; }
+    analyser=null; setUI(false); clearCanvas();
   };
-
-  function clearCanvas(){
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
 
   function loop(){
     animId = requestAnimationFrame(loop);
-    var bufLen   = analyser.frequencyBinCount;
-    var freqData = new Uint8Array(bufLen);
-    var timeData = new Uint8Array(bufLen);
-    analyser.getByteFrequencyData(freqData);
-    analyser.getByteTimeDomainData(timeData);
-    drawSpectrum(freqData);
-    updateVU(timeData);
+    var fd = new Uint8Array(analyser.frequencyBinCount);
+    var td = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(fd);
+    analyser.getByteTimeDomainData(td);
+    if(viewMode==='circular') drawCircular(fd); else drawLinear(fd);
+    updateVU(td);
+    if(showBPM)   updateBPM(fd);
+    if(showBands) updateBands(fd);
   }
 
-  function drawSpectrum(data){
-    var W = canvas.width, H = canvas.height;
-    var LABEL_H = Math.round(20 * DPR);
-    var vizH    = H - LABEL_H;
-    var midY    = vizH * 0.60;
-
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.strokeStyle = 'rgba(0,0,0,0.035)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
-
-    var numBins   = Math.floor(data.length * 0.65);
-    var totalBars = Math.floor(W / (6.0 * DPR));  // 막대 수 50% 감소
-    var barSlot   = W / totalBars;
-    var barW      = barSlot * 0.66;
-    var gapX      = (barSlot - barW) / 2;
-
-    for(var i = 0; i < totalBars; i++){
-      // 단일 스펙트럼: 왼쪽=저역, 오른쪽=고역 (로그 스케일)
-      var pos     = i / totalBars;
-      var logFrac = Math.pow(pos, 1.5);
-      var binIdx  = Math.min(Math.round(logFrac * numBins), data.length-1);
-      var val     = data[binIdx] / 255;
-      if(val < 0.004) continue;
-
-      var barH = val * midY * 0.92;
-      var x    = i * barSlot + gapX;
-      // 색상: 왼쪽(저역)=민트(168) → 오른쪽(고역)=핑크(346)
-      var hue  = 168 + pos * 178;
-      var sat  = 62  + val * 28;
-      var litT = 38  + (1-val) * 18;
-      var litB = litT + 22;
-
-      if(val > 0.35){
-        ctx.shadowBlur  = 4 + val * 8;  // 글로우 강도·범위 축소로 GPU 부하 완화
-        ctx.shadowColor = 'hsla('+hue+','+sat+'%,'+litT+'%,0.2)';
-      } else {
-        ctx.shadowBlur = 0;
-      }
-
-      var radius = Math.min(barW/2, 3.5*DPR);
-      var gradUp = ctx.createLinearGradient(0, midY, 0, midY-barH);
-      gradUp.addColorStop(0, 'hsla('+hue+','+sat+'%,'+litB+'%,0.45)');
-      gradUp.addColorStop(1, 'hsla('+hue+','+sat+'%,'+litT+'%,1)');
-      ctx.fillStyle = gradUp;
-      ctx.beginPath();
-      var r = (barH > radius*2) ? radius : 0;
-      ctx.moveTo(x+r, midY-barH);
-      ctx.lineTo(x+barW-r, midY-barH);
-      ctx.quadraticCurveTo(x+barW, midY-barH, x+barW, midY-barH+r);
-      ctx.lineTo(x+barW, midY);
-      ctx.lineTo(x, midY);
-      ctx.lineTo(x, midY-barH+r);
-      ctx.quadraticCurveTo(x, midY-barH, x+r, midY-barH);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.shadowBlur = 0;
-      var reflH  = barH * 0.42;
-      var gradDn = ctx.createLinearGradient(0, midY, 0, midY+reflH);
-      gradDn.addColorStop(0, 'hsla('+hue+','+sat+'%,'+litT+'%,0.14)');
-      gradDn.addColorStop(1, 'hsla('+hue+','+sat+'%,'+litT+'%,0)');
-      ctx.fillStyle = gradDn;
-      ctx.fillRect(x, midY, barW, reflH);
+  function drawLinear(data){
+    var t=T(), W=canvas.width, H=canvas.height;
+    var LH=Math.round(20*DPR), vizH=H-LH, midY=vizH*0.60;
+    ctx.fillStyle=t.bg; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle=t.line; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,midY); ctx.lineTo(W,midY); ctx.stroke();
+    var nb=Math.floor(data.length*0.65);
+    var tb=Math.floor(W/(6.0*DPR));
+    var bs=W/tb, bw=bs*0.66, gx=(bs-bw)/2;
+    for(var i=0;i<tb;i++){
+      var pos=i/tb, lf=Math.pow(pos,1.5);
+      var bi=Math.min(Math.round(lf*nb),data.length-1);
+      var val=data[bi]/255; if(val<0.004) continue;
+      var bh=val*midY*0.92, x=i*bs+gx;
+      var hue=t.hs+pos*t.hr, sat=t.sb+val*28, litT=t.lt+(1-val)*18, litB=litT+22;
+      if(val>0.35){ ctx.shadowBlur=4+val*8; ctx.shadowColor='hsla('+hue+','+sat+'%,'+litT+'%,0.2)'; }
+      else ctx.shadowBlur=0;
+      var rr=Math.min(bw/2,3.5*DPR), r=(bh>rr*2)?rr:0;
+      var gu=ctx.createLinearGradient(0,midY,0,midY-bh);
+      gu.addColorStop(0,'hsla('+hue+','+sat+'%,'+litB+'%,0.45)');
+      gu.addColorStop(1,'hsla('+hue+','+sat+'%,'+litT+'%,1)');
+      ctx.fillStyle=gu; ctx.beginPath();
+      ctx.moveTo(x+r,midY-bh); ctx.lineTo(x+bw-r,midY-bh);
+      ctx.quadraticCurveTo(x+bw,midY-bh,x+bw,midY-bh+r);
+      ctx.lineTo(x+bw,midY); ctx.lineTo(x,midY); ctx.lineTo(x,midY-bh+r);
+      ctx.quadraticCurveTo(x,midY-bh,x+r,midY-bh); ctx.closePath(); ctx.fill();
+      ctx.shadowBlur=0;
+      var rh=bh*0.42, gd=ctx.createLinearGradient(0,midY,0,midY+rh);
+      gd.addColorStop(0,'hsla('+hue+','+sat+'%,'+litT+'%,0.14)');
+      gd.addColorStop(1,'hsla('+hue+','+sat+'%,'+litT+'%,0)');
+      ctx.fillStyle=gd; ctx.fillRect(x,midY,bw,rh);
     }
-    ctx.shadowBlur = 0;
-
+    ctx.shadowBlur=0;
     if(!audioCtx) return;
-    var nyquist    = audioCtx.sampleRate / 2;
-    var freqPerBin = nyquist / data.length;
-    var labels     = [100, 250, 500, 1000, 2000, 4000, 8000, 16000];
-
-    ctx.font      = Math.round(8.5*DPR) + "px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
-    ctx.textAlign = 'center';
-
-    for(var li = 0; li < labels.length; li++){
-      var freq = labels[li];
-      var bin  = freq / freqPerBin;
-      if(bin >= numBins) continue;
-      // 로그 역매핑으로 바 위치 계산
-      var fr   = Math.pow(bin / numBins, 1 / 1.5);
-      var idx  = Math.round(fr * totalBars);
-      var lbl  = freq >= 1000 ? (freq/1000)+'k' : String(freq);
-      var yLbl = H - Math.round(3*DPR);
-      var bv   = data[Math.min(Math.round(Math.pow(fr,1.5)*numBins), data.length-1)] / 255;
-      var hueL = 168 + fr * 178;
-      var col  = bv > 0.06 ? 'hsla('+hueL+',45%,42%,0.65)' : 'rgba(185,185,190,0.38)';
-      ctx.fillStyle = col;
-      if(idx < totalBars) ctx.fillText(lbl, idx*barSlot + barW/2, yLbl);
+    var ny=audioCtx.sampleRate/2, fpb=ny/data.length;
+    var lbls=[100,250,500,1000,2000,4000,8000,16000];
+    ctx.font=Math.round(8.5*DPR)+"px -apple-system,sans-serif"; ctx.textAlign='center';
+    for(var li=0;li<lbls.length;li++){
+      var freq=lbls[li], bin=freq/fpb; if(bin>=nb) continue;
+      var fr=Math.pow(bin/nb,1/1.5), idx=Math.round(fr*tb);
+      var lbl=freq>=1000?(freq/1000)+'k':String(freq);
+      var bv=data[Math.min(Math.round(Math.pow(fr,1.5)*nb),data.length-1)]/255;
+      var hL=t.hs+fr*t.hr;
+      ctx.fillStyle=bv>0.06?'hsla('+hL+',45%,42%,0.65)':'rgba(185,185,190,0.38)';
+      if(idx<tb) ctx.fillText(lbl,idx*bs+bw/2,H-Math.round(3*DPR));
     }
   }
 
-  function updateVU(timeData){
-    var sum = 0;
-    for(var i = 0; i < timeData.length; i++){
-      var n = (timeData[i]-128)/128;
-      sum += n*n;
+  function drawCircular(data){
+    var t=T(), W=canvas.width, H=canvas.height;
+    var cx=W/2, cy=H/2, baseR=Math.min(W,H)*0.20, maxBar=Math.min(W,H)*0.30;
+    ctx.fillStyle=t.bg; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle=t.line; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(cx,cy,baseR,0,Math.PI*2); ctx.stroke();
+    var nb=Math.floor(data.length*0.65);
+    var tb=Math.floor(W/(6.0*DPR));
+    var aStep=(Math.PI*2)/tb;
+    for(var i=0;i<tb;i++){
+      var pos=i/tb, lf=Math.pow(pos,1.5);
+      var bi=Math.min(Math.round(lf*nb),data.length-1);
+      var val=data[bi]/255; if(val<0.004) continue;
+      var barLen=val*maxBar, angle=i*aStep-Math.PI/2;
+      var hue=t.hs+pos*t.hr, sat=t.sb+val*28, litT=t.lt+(1-val)*18;
+      if(val>0.35){ ctx.shadowBlur=4+val*10; ctx.shadowColor='hsla('+hue+','+sat+'%,'+litT+'%,0.3)'; }
+      else ctx.shadowBlur=0;
+      ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle);
+      var bw2=(2*Math.PI*baseR/tb)*0.65;
+      var gr=ctx.createLinearGradient(baseR,0,baseR+barLen,0);
+      gr.addColorStop(0,'hsla('+hue+','+sat+'%,'+(litT+20)+'%,0.5)');
+      gr.addColorStop(1,'hsla('+hue+','+sat+'%,'+litT+'%,1)');
+      ctx.fillStyle=gr; ctx.fillRect(baseR,-bw2/2,barLen,bw2);
+      ctx.restore();
     }
-    var rms = Math.sqrt(sum / timeData.length);
-    var db  = rms > 0 ? 20 * Math.log(rms) / Math.LN10 : -Infinity;
-    var dbC = Math.max(-60, Math.min(0, isFinite(db) ? db : -60));
-    document.getElementById('vuFill').style.width = ((dbC+60)/60*100) + '%';
-    document.getElementById('vuDb').textContent   = isFinite(db) ? db.toFixed(1)+' dB' : '-- dB';
+    ctx.shadowBlur=0;
   }
+
+  function updateBPM(fd){
+    var be=Math.floor(fd.length*0.04), energy=0;
+    for(var i=0;i<be;i++) energy+=fd[i]*fd[i];
+    energy=Math.sqrt(energy/be)/255;
+    energyHistory.push(energy);
+    if(energyHistory.length>43) energyHistory.shift();
+    var avg=0; for(var i=0;i<energyHistory.length;i++) avg+=energyHistory[i]; avg/=energyHistory.length;
+    var vari=0; for(var i=0;i<energyHistory.length;i++) vari+=(energyHistory[i]-avg)*(energyHistory[i]-avg); vari/=energyHistory.length;
+    var now=performance.now();
+    if(energy>avg+Math.sqrt(vari)*1.4 && now-lastBeatTime>280){
+      lastBeatTime=now; bpmBeats.push(now);
+      bpmBeats=bpmBeats.filter(function(x){return now-x<10000;});
+    }
+    var el=document.getElementById('bpmValue');
+    if(bpmBeats.length>=4){
+      var intv=[]; for(var i=1;i<bpmBeats.length;i++) intv.push(bpmBeats[i]-bpmBeats[i-1]);
+      var ai=0; for(var i=0;i<intv.length;i++) ai+=intv[i]; ai/=intv.length;
+      el.textContent=Math.round(60000/ai);
+    } else el.textContent='--';
+  }
+
+  function updateBands(fd){
+    if(!audioCtx) return;
+    var ny=audioCtx.sampleRate/2, fpb=ny/fd.length;
+    var be=Math.floor(250/fpb), me=Math.floor(2500/fpb);
+    var bass=0,mid=0,high=0;
+    for(var i=0;i<be;i++) bass+=fd[i];
+    for(var i=be;i<me;i++) mid+=fd[i];
+    for(var i=me;i<fd.length;i++) high+=fd[i];
+    setBar('bassBar','bassVal',Math.round(bass/(be*255)*100));
+    setBar('midBar','midVal',Math.round(mid/((me-be)*255)*100));
+    setBar('highBar','highVal',Math.round(high/((fd.length-me)*255)*100));
+  }
+  function setBar(bid,vid,pct){
+    var b=document.getElementById(bid),v=document.getElementById(vid);
+    if(b) b.style.width=pct+'%'; if(v) v.textContent=pct+'%';
+  }
+
+  function updateVU(td){
+    var sum=0;
+    for(var i=0;i<td.length;i++){var n=(td[i]-128)/128; sum+=n*n;}
+    var rms=Math.sqrt(sum/td.length);
+    var db=rms>0?20*Math.log(rms)/Math.LN10:-Infinity;
+    var dbC=Math.max(-60,Math.min(0,isFinite(db)?db:-60));
+    document.getElementById('vuFill').style.width=((dbC+60)/60*100)+'%';
+    document.getElementById('vuDb').textContent=isFinite(db)?db.toFixed(1)+' dB':'-- dB';
+  }
+
+  function setUI(live){
+    document.getElementById('sysBtn').disabled=live;
+    document.getElementById('micBtn').disabled=live;
+    document.getElementById('stopBtn').disabled=!live;
+    document.getElementById('statusDot').className='status-dot'+(live?' live':'');
+    document.getElementById('statusText').textContent=live?'Live':'Stopped';
+    document.getElementById('statusText').className='status-text'+(live?' live':'');
+    if(!live){document.getElementById('vuFill').style.width='0%';document.getElementById('vuDb').textContent='-- dB';}
+  }
+  function setHint(html,isErr){
+    var el=document.getElementById('hint'); el.innerHTML=html;
+    el.className='hint'+(isErr?' err':'');
+  }
+  function clearCanvas(){ ctx.fillStyle=T().bg; ctx.fillRect(0,0,canvas.width,canvas.height); }
+
+  /* ── SCREENSHOT ── */
+  window.takeScreenshot = function(){
+    var a=document.createElement('a');
+    a.download='voice-spectrum-'+Date.now()+'.png';
+    a.href=canvas.toDataURL('image/png'); a.click();
+  };
+
+  /* ── AUDIO MP3 ── */
+  window.toggleAudioRec = function(){
+    if(!audioCtx||!source){alert('먼저 오디오를 시작해주세요.');return;}
+    if(!audioRecording) startAudioRec(); else stopAudioRecInternal(true);
+  };
+  function startAudioRec(){
+    pcmSamples=[]; audioRecording=true;
+    var dur=Math.max(1,Math.min(60,parseInt(document.getElementById('audioDur').value)||30));
+    scriptProc=audioCtx.createScriptProcessor(4096,1,1);
+    scriptProc.onaudioprocess=function(e){
+      if(!audioRecording) return;
+      var buf=e.inputBuffer.getChannelData(0);
+      for(var i=0;i<buf.length;i++) pcmSamples.push(buf[i]);
+    };
+    source.connect(scriptProc);
+    var sd=audioCtx.createMediaStreamDestination(); scriptProc.connect(sd);
+    var btn=document.getElementById('audioRecBtn'); btn.textContent='■ 녹음 중지'; btn.classList.add('active');
+    audioRecTimer=setTimeout(function(){stopAudioRecInternal(true);},dur*1000);
+  }
+  function stopAudioRecInternal(dl){
+    audioRecording=false;
+    if(audioRecTimer){clearTimeout(audioRecTimer);audioRecTimer=null;}
+    if(scriptProc){scriptProc.disconnect();scriptProc=null;}
+    var btn=document.getElementById('audioRecBtn'); btn.textContent='● 녹음 시작'; btn.classList.remove('active');
+    if(dl && pcmSamples.length>0) encodeMp3(pcmSamples, audioCtx?audioCtx.sampleRate:44100);
+    pcmSamples=[];
+  }
+  function encodeMp3(samples,sr){
+    if(typeof lamejs==='undefined'){alert('MP3 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');return;}
+    var enc=new lamejs.Mp3Encoder(1,sr,128);
+    var i16=new Int16Array(samples.length);
+    for(var i=0;i<samples.length;i++){var s=Math.max(-1,Math.min(1,samples[i]));i16[i]=s<0?s*32768:s*32767;}
+    var mp3=[],chunk=1152;
+    for(var i=0;i<i16.length;i+=chunk){var e=enc.encodeBuffer(i16.subarray(i,i+chunk));if(e.length>0)mp3.push(e);}
+    var tail=enc.flush(); if(tail.length>0) mp3.push(tail);
+    var blob=new Blob(mp3,{type:'audio/mp3'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='recording-'+Date.now()+'.mp3'; a.click();
+  }
+
+  /* ── VIDEO ── */
+  window.startVideoRec = function(){
+    if(!audioCtx||!stream){alert('먼저 오디오를 시작해주세요.');return;}
+    var dur=Math.max(5,Math.min(15,parseInt(document.getElementById('mp4Dur').value)||10));
+    var cs=canvas.captureStream(30);
+    var at=stream.getAudioTracks()[0]; if(at) cs.addTrack(at);
+    var mime=MediaRecorder.isTypeSupported('video/mp4')?'video/mp4':'video/webm';
+    var ext=mime==='video/mp4'?'.mp4':'.webm';
+    videoChunks=[]; videoRec=new MediaRecorder(cs,{mimeType:mime});
+    videoRec.ondataavailable=function(e){if(e.data.size>0)videoChunks.push(e.data);};
+    videoRec.onstop=function(){
+      var blob=new Blob(videoChunks,{type:mime});
+      var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download='spectrum-'+Date.now()+ext; a.click();
+      var btn=document.getElementById('mp4Btn'); btn.textContent='● MP4 녹화'; btn.classList.remove('active');
+    };
+    videoRec.start();
+    var btn=document.getElementById('mp4Btn'); btn.textContent='■ 녹화 중 ('+dur+'s)'; btn.classList.add('active');
+    setTimeout(function(){if(videoRec&&videoRec.state==='recording')videoRec.stop();},dur*1000);
+  };
+
+  /* ── GIF ── */
+  window.startGifRec = function(){
+    if(!audioCtx){alert('먼저 오디오를 시작해주세요.');return;}
+    if(typeof GIF==='undefined'){alert('GIF 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');return;}
+    if(gifCapturing) return;
+    var dur=Math.max(5,Math.min(10,parseInt(document.getElementById('gifDur').value)||7));
+    var w=Math.round(canvas.width/DPR), h=Math.round(canvas.height/DPR);
+    var gif=new GIF({workers:2,quality:8,width:w,height:h,
+      workerScript:'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'});
+    var fps=12, max=dur*fps, count=0;
+    var tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
+    var tc=tmp.getContext('2d');
+    gifCapturing=true;
+    var btn=document.getElementById('gifBtn'); btn.textContent='■ 캡처 중…'; btn.classList.add('active');
+    function frame(){
+      if(!gifCapturing||count>=max){
+        gifCapturing=false; btn.textContent='⏳ 인코딩 중…';
+        gif.on('finished',function(blob){
+          var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+          a.download='spectrum-'+Date.now()+'.gif'; a.click();
+          btn.textContent='● GIF 녹화'; btn.classList.remove('active');
+        });
+        gif.render(); return;
+      }
+      tc.drawImage(canvas,0,0,w,h);
+      gif.addFrame(tmp,{copy:true,delay:Math.round(1000/fps)});
+      count++; setTimeout(frame,1000/fps);
+    }
+    frame();
+  };
 
   clearCanvas();
 })();
