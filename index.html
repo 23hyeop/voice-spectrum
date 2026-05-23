@@ -1,0 +1,288 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Spectrum</title>
+<style>
+
+
+
+
+
+
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f2f5;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px 56px;color:#111;}
+
+header{width:100%;max-width:920px;display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:40px;}
+.logo-title{display:block;font-size:1.15rem;font-weight:700;letter-spacing:6px;text-transform:uppercase;color:#111;line-height:1;margin-bottom:5px;}
+.logo-sub{display:block;font-size:0.64rem;font-weight:700;letter-spacing:3.5px;color:#bbb;text-transform:uppercase;}
+
+.status-pill{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:100px;background:#fff;border:1px solid #e8e8e8;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:#d0d0d0;transition:background 0.3s;flex-shrink:0;}
+.status-dot.live{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,0.18);animation:dp 1.4s ease-in-out infinite;}
+@keyframes dp{0%,100%{box-shadow:0 0 0 3px rgba(34,197,94,0.18);}50%{box-shadow:0 0 0 7px rgba(34,197,94,0.06);}}
+.status-text{font-size:0.68rem;font-weight:500;letter-spacing:1px;color:#bbb;white-space:nowrap;}
+.status-text.live{color:#22c55e;}
+
+.vu-section{width:100%;max-width:920px;margin-bottom:20px;}
+.vu-label-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px;}
+.vu-label{font-size:0.62rem;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#aaa;}
+.vu-db{font-size:0.72rem;font-weight:500;letter-spacing:0.5px;color:#bbb;font-variant-numeric:tabular-nums;}
+.vu-track{width:100%;height:2px;background:#e2e2e6;border-radius:2px;overflow:hidden;}
+.vu-fill{height:100%;width:0%;border-radius:2px;background:linear-gradient(90deg,#67e8c8,#60b4f5,#a78bfa,#f472b6);transition:width 0.055s linear;}
+
+.spectrum-card{width:100%;max-width:920px;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,0.04),0 4px 24px rgba(0,0,0,0.05),0 12px 48px rgba(0,0,0,0.04);margin-bottom:32px;}
+#freqCanvas{display:block;width:100%;height:380px;}
+
+.controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;}
+.btn{padding:11px 30px;border-radius:100px;border:none;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:0.78rem;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;transition:transform 0.15s,box-shadow 0.15s,background 0.15s;outline:none;}
+.btn-dark{background:#111;color:#fff;}
+.btn-dark:hover{background:#2a2a2a;transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,0.18);}
+.btn-light{background:#fff;color:#333;border:1.5px solid #e0e0e0;}
+.btn-light:hover{border-color:#bbb;transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,0.07);}
+.btn:disabled{opacity:0.22;cursor:not-allowed;transform:none !important;box-shadow:none !important;}
+
+.hint{font-size:0.7rem;font-weight:400;letter-spacing:0.3px;color:#bbb;text-align:center;max-width:440px;line-height:1.75;min-height:1.2em;}
+.hint.err{color:#f87171;}
+footer{margin-top:52px;font-size:0.58rem;font-weight:400;letter-spacing:2.5px;color:#ccc;text-transform:uppercase;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <span class="logo-title">Voice Spectrum</span>
+    <span class="logo-sub">Real-time Audio Visualizer</span>
+  </div>
+  <div class="status-pill">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-text" id="statusText">Stopped</span>
+  </div>
+</header>
+<div class="vu-section">
+  <div class="vu-label-row">
+    <span class="vu-label">Level</span>
+    <span class="vu-db" id="vuDb">-- dB</span>
+  </div>
+  <div class="vu-track"><div class="vu-fill" id="vuFill"></div></div>
+</div>
+<div class="spectrum-card">
+  <canvas id="freqCanvas"></canvas>
+</div>
+<div class="controls">
+  <button class="btn btn-dark"  id="sysBtn" onclick="startSystemAudio()">System Audio</button>
+  <button class="btn btn-light" id="micBtn"  onclick="startMic()">Microphone</button>
+  <button class="btn btn-light" id="stopBtn" onclick="stopAudio()" disabled>Stop</button>
+</div>
+<div class="hint" id="hint"></div>
+<footer>Voice Spectrum &nbsp;&middot;&nbsp; Web Audio API &nbsp;&middot;&nbsp; 2026</footer>
+<script>
+(function(){
+  var audioCtx, analyser, source, stream, animId;
+  var DPR = window.devicePixelRatio || 1;
+  var canvas = document.getElementById('freqCanvas');
+  var ctx = canvas.getContext('2d');
+
+  function resize(){
+    canvas.width  = canvas.offsetWidth  * DPR;
+    canvas.height = canvas.offsetHeight * DPR;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function setHint(html, isErr){
+    var el = document.getElementById('hint');
+    el.innerHTML = html;
+    el.className = 'hint' + (isErr ? ' err' : '');
+  }
+
+  function setUI(live){
+    document.getElementById('sysBtn').disabled  = live;
+    document.getElementById('micBtn').disabled  = live;
+    document.getElementById('stopBtn').disabled = !live;
+    document.getElementById('statusDot').className   = 'status-dot'  + (live ? ' live' : '');
+    document.getElementById('statusText').textContent = live ? 'Live' : 'Stopped';
+    document.getElementById('statusText').className  = 'status-text' + (live ? ' live' : '');
+    if(!live){
+      document.getElementById('vuFill').style.width = '0%';
+      document.getElementById('vuDb').textContent   = '-- dB';
+    }
+  }
+
+  window.startSystemAudio = function(){
+    setHint('화면 선택 후 하단의 <b>"시스템 오디오 공유"</b> 체크박스를 켜고 공유를 눌러주세요.');
+    navigator.mediaDevices.getDisplayMedia({ audio: true, video: { width:1, height:1 } })
+      .then(function(s){
+        stream = s;
+        stream.getVideoTracks().forEach(function(t){ t.stop(); });
+        if(!stream.getAudioTracks().length){
+          setHint('"시스템 오디오 공유"를 체크했는지 확인하세요.', true);
+          stream.getTracks().forEach(function(t){ t.stop(); });
+          return;
+        }
+        setHint('');
+        initAudio();
+      })
+      .catch(function(e){
+        if(e.name !== 'NotAllowedError') setHint('오류: ' + e.message, true);
+        else setHint('');
+      });
+  };
+
+  window.startMic = function(){
+    setHint('');
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(function(s){ stream = s; initAudio(); })
+      .catch(function(e){ setHint('마이크 오류: ' + e.message, true); });
+  };
+
+  function initAudio(){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.82;
+    source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+    stream.getAudioTracks()[0].addEventListener('ended', window.stopAudio);
+    setUI(true);
+    loop();
+  }
+
+  window.stopAudio = function(){
+    if(animId){ cancelAnimationFrame(animId); animId = null; }
+    if(source){ source.disconnect(); source = null; }
+    if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+    if(audioCtx){ audioCtx.close(); audioCtx = null; }
+    analyser = null;
+    setUI(false);
+    clearCanvas();
+  };
+
+  function clearCanvas(){
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function loop(){
+    animId = requestAnimationFrame(loop);
+    var bufLen   = analyser.frequencyBinCount;
+    var freqData = new Uint8Array(bufLen);
+    var timeData = new Uint8Array(bufLen);
+    analyser.getByteFrequencyData(freqData);
+    analyser.getByteTimeDomainData(timeData);
+    drawSpectrum(freqData);
+    updateVU(timeData);
+  }
+
+  function drawSpectrum(data){
+    var W = canvas.width, H = canvas.height;
+    var LABEL_H = Math.round(20 * DPR);
+    var vizH    = H - LABEL_H;
+    var midY    = vizH * 0.60;
+
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = 'rgba(0,0,0,0.035)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(W, midY); ctx.stroke();
+
+    var numBins   = Math.floor(data.length * 0.65);
+    var totalBars = Math.floor(W / (3.0 * DPR));
+    var barSlot   = W / totalBars;
+    var barW      = barSlot * 0.66;
+    var gapX      = (barSlot - barW) / 2;
+
+    for(var i = 0; i < totalBars; i++){
+      // 단일 스펙트럼: 왼쪽=저역, 오른쪽=고역 (로그 스케일)
+      var pos     = i / totalBars;
+      var logFrac = Math.pow(pos, 1.5);
+      var binIdx  = Math.min(Math.round(logFrac * numBins), data.length-1);
+      var val     = data[binIdx] / 255;
+      if(val < 0.004) continue;
+
+      var barH = val * midY * 0.92;
+      var x    = i * barSlot + gapX;
+      // 색상: 왼쪽(저역)=민트(168) → 오른쪽(고역)=핑크(346)
+      var hue  = 168 + pos * 178;
+      var sat  = 62  + val * 28;
+      var litT = 38  + (1-val) * 18;
+      var litB = litT + 22;
+
+      if(val > 0.10){
+        ctx.shadowBlur  = 6 + val * 16;
+        ctx.shadowColor = 'hsla('+hue+','+sat+'%,'+litT+'%,0.25)';
+      } else {
+        ctx.shadowBlur = 0;
+      }
+
+      var radius = Math.min(barW/2, 3.5*DPR);
+      var gradUp = ctx.createLinearGradient(0, midY, 0, midY-barH);
+      gradUp.addColorStop(0, 'hsla('+hue+','+sat+'%,'+litB+'%,0.45)');
+      gradUp.addColorStop(1, 'hsla('+hue+','+sat+'%,'+litT+'%,1)');
+      ctx.fillStyle = gradUp;
+      ctx.beginPath();
+      var r = (barH > radius*2) ? radius : 0;
+      ctx.moveTo(x+r, midY-barH);
+      ctx.lineTo(x+barW-r, midY-barH);
+      ctx.quadraticCurveTo(x+barW, midY-barH, x+barW, midY-barH+r);
+      ctx.lineTo(x+barW, midY);
+      ctx.lineTo(x, midY);
+      ctx.lineTo(x, midY-barH+r);
+      ctx.quadraticCurveTo(x, midY-barH, x+r, midY-barH);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      var reflH  = barH * 0.42;
+      var gradDn = ctx.createLinearGradient(0, midY, 0, midY+reflH);
+      gradDn.addColorStop(0, 'hsla('+hue+','+sat+'%,'+litT+'%,0.14)');
+      gradDn.addColorStop(1, 'hsla('+hue+','+sat+'%,'+litT+'%,0)');
+      ctx.fillStyle = gradDn;
+      ctx.fillRect(x, midY, barW, reflH);
+    }
+    ctx.shadowBlur = 0;
+
+    if(!audioCtx) return;
+    var nyquist    = audioCtx.sampleRate / 2;
+    var freqPerBin = nyquist / data.length;
+    var labels     = [100, 250, 500, 1000, 2000, 4000, 8000, 16000];
+
+    ctx.font      = Math.round(8.5*DPR) + "px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+    ctx.textAlign = 'center';
+
+    for(var li = 0; li < labels.length; li++){
+      var freq = labels[li];
+      var bin  = freq / freqPerBin;
+      if(bin >= numBins) continue;
+      // 로그 역매핑으로 바 위치 계산
+      var fr   = Math.pow(bin / numBins, 1 / 1.5);
+      var idx  = Math.round(fr * totalBars);
+      var lbl  = freq >= 1000 ? (freq/1000)+'k' : String(freq);
+      var yLbl = H - Math.round(3*DPR);
+      var bv   = data[Math.min(Math.round(Math.pow(fr,1.5)*numBins), data.length-1)] / 255;
+      var hueL = 168 + fr * 178;
+      var col  = bv > 0.06 ? 'hsla('+hueL+',45%,42%,0.65)' : 'rgba(185,185,190,0.38)';
+      ctx.fillStyle = col;
+      if(idx < totalBars) ctx.fillText(lbl, idx*barSlot + barW/2, yLbl);
+    }
+  }
+
+  function updateVU(timeData){
+    var sum = 0;
+    for(var i = 0; i < timeData.length; i++){
+      var n = (timeData[i]-128)/128;
+      sum += n*n;
+    }
+    var rms = Math.sqrt(sum / timeData.length);
+    var db  = rms > 0 ? 20 * Math.log(rms) / Math.LN10 : -Infinity;
+    var dbC = Math.max(-60, Math.min(0, isFinite(db) ? db : -60));
+    document.getElementById('vuFill').style.width = ((dbC+60)/60*100) + '%';
+    document.getElementById('vuDb').textContent   = isFinite(db) ? db.toFixed(1)+' dB' : '-- dB';
+  }
+
+  clearCanvas();
+})();
+</script>
+</body>
+</html>
