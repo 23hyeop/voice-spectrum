@@ -65,21 +65,9 @@ body.theme-pastel .spectrum-card{background:#fff;}
 .hint.err{color:#f87171;}
 
 .analysis-section{width:100%;max-width:940px;margin-bottom:20px;}
-.analysis-toggles{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
-.toggle-btn{padding:8px 20px;border-radius:100px;border:1.5px solid #e0e0e0;background:#fff;color:#555;font-size:.75rem;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all .15s;font-family:inherit;}
-body.theme-dark .toggle-btn,body.theme-neon .toggle-btn{background:#0d0d1e;border-color:#1e1e32;color:#445;}
-body.theme-pastel .toggle-btn{background:#fff;border-color:#ddd0f0;color:#9080c0;}
-.toggle-btn.active{background:#111;border-color:#111;color:#fff;}
-body.theme-dark .toggle-btn.active,body.theme-neon .toggle-btn.active{background:#1e1e3a;border-color:#3a3a6a;color:#aab;}
-body.theme-pastel .toggle-btn.active{background:#7050c0;border-color:#7050c0;color:#fff;}
 .analysis-panel{background:#fafafa;border:1px solid #eee;border-radius:16px;padding:18px 24px;display:flex;flex-wrap:wrap;gap:24px;}
 body.theme-dark .analysis-panel,body.theme-neon .analysis-panel{background:#0a0a16;border-color:#1a1a2e;}
 body.theme-pastel .analysis-panel{background:#faf6ff;border-color:#ecdff8;}
-.bpm-display{display:flex;align-items:baseline;gap:8px;}
-.bpm-num{font-size:2.4rem;font-weight:700;color:#111;font-variant-numeric:tabular-nums;line-height:1;}
-body.theme-dark .bpm-num,body.theme-neon .bpm-num{color:#aab;}
-body.theme-pastel .bpm-num{color:#5030a0;}
-.bpm-unit{font-size:.65rem;font-weight:600;letter-spacing:2px;color:#bbb;text-transform:uppercase;}
 .bands-display{flex:1;display:flex;flex-direction:column;gap:8px;min-width:200px;}
 .band-row{display:flex;align-items:center;gap:10px;}
 .band-name{font-size:.65rem;font-weight:600;letter-spacing:1px;color:#aaa;width:28px;text-align:right;}
@@ -189,18 +177,8 @@ body.theme-pastel footer{color:#c0b0e0;}
 <div class="hint" id="hint"></div>
 
 <div class="analysis-section">
-  <div class="analysis-toggles">
-    <button class="toggle-btn" id="bpmBtn" onclick="toggleBPM()">BPM 감지</button>
-    <button class="toggle-btn" id="bandsBtn" onclick="toggleBands()">대역별 레벨</button>
-  </div>
-  <div class="analysis-panel" id="analysisPanel" style="display:none">
-    <div id="bpmDisplay" style="display:none">
-      <div class="bpm-display">
-        <span class="bpm-num" id="bpmValue">--</span>
-        <span class="bpm-unit">BPM</span>
-      </div>
-    </div>
-    <div class="bands-display" id="bandsDisplay" style="display:none">
+  <div class="analysis-panel" id="analysisPanel">
+    <div class="bands-display" id="bandsDisplay">
       <div class="band-row">
         <span class="band-name">저음</span>
         <div class="band-track"><div class="band-fill" id="bassBar" style="background:#22c55e"></div></div>
@@ -261,8 +239,6 @@ body.theme-pastel footer{color:#c0b0e0;}
   var ctx = canvas.getContext('2d');
   var audioCtx, analyser, source, stream, animId;
   var viewMode = 'linear', themeName = 'light';
-  var showBPM = false, showBands = false;
-  var energyHistory = [], bpmBeats = [], lastBeatTime = 0;
   var pcmSamples = [], scriptProc = null, audioRecording = false, audioRecTimer = null;
   var videoRec = null, videoChunks = [];
 
@@ -295,25 +271,6 @@ body.theme-pastel footer{color:#c0b0e0;}
       b.classList.toggle('active', b.dataset.theme === name);
     });
     if(!animId) clearCanvas();
-  };
-
-  function refreshPanel(){
-    var show = showBPM || showBands;
-    document.getElementById('analysisPanel').style.display = show ? 'flex' : 'none';
-    document.getElementById('bpmDisplay').style.display   = showBPM   ? 'block' : 'none';
-    document.getElementById('bandsDisplay').style.display = showBands ? 'flex'  : 'none';
-  }
-
-  window.toggleBPM = function(){
-    showBPM = !showBPM;
-    document.getElementById('bpmBtn').classList.toggle('active', showBPM);
-    if(!showBPM){ energyHistory=[]; bpmBeats=[]; document.getElementById('bpmValue').textContent='--'; }
-    refreshPanel();
-  };
-  window.toggleBands = function(){
-    showBands = !showBands;
-    document.getElementById('bandsBtn').classList.toggle('active', showBands);
-    refreshPanel();
   };
 
   window.startSystemAudio = function(){
@@ -363,8 +320,7 @@ body.theme-pastel footer{color:#c0b0e0;}
     analyser.getByteTimeDomainData(td);
     if(viewMode==='circular') drawCircular(fd); else drawLinear(fd);
     updateVU(td);
-    if(showBPM)   updateBPM(fd);
-    if(showBands) updateBands(fd);
+    updateBands(fd);
   }
 
   function drawLinear(data){
@@ -422,7 +378,7 @@ body.theme-pastel footer{color:#c0b0e0;}
     ctx.strokeStyle=t.line; ctx.lineWidth=1;
     ctx.beginPath(); ctx.arc(cx,cy,baseR,0,Math.PI*2); ctx.stroke();
     var nb=Math.floor(data.length*0.65);
-    var tb=Math.floor(W/(12.0*DPR));
+    var tb=Math.floor(W/(14.0*DPR));
     var aStep=(Math.PI*2)/tb;
     for(var i=0;i<tb;i++){
       var pos=i/tb, lf=Math.pow(pos,1.5);
@@ -441,27 +397,6 @@ body.theme-pastel footer{color:#c0b0e0;}
       ctx.restore();
     }
     ctx.shadowBlur=0;
-  }
-
-  function updateBPM(fd){
-    var be=Math.floor(fd.length*0.04), energy=0;
-    for(var i=0;i<be;i++) energy+=fd[i]*fd[i];
-    energy=Math.sqrt(energy/be)/255;
-    energyHistory.push(energy);
-    if(energyHistory.length>43) energyHistory.shift();
-    var avg=0; for(var i=0;i<energyHistory.length;i++) avg+=energyHistory[i]; avg/=energyHistory.length;
-    var vari=0; for(var i=0;i<energyHistory.length;i++) vari+=(energyHistory[i]-avg)*(energyHistory[i]-avg); vari/=energyHistory.length;
-    var now=performance.now();
-    if(energy>avg+Math.sqrt(vari)*1.4 && now-lastBeatTime>280){
-      lastBeatTime=now; bpmBeats.push(now);
-      bpmBeats=bpmBeats.filter(function(x){return now-x<10000;});
-    }
-    var el=document.getElementById('bpmValue');
-    if(bpmBeats.length>=4){
-      var intv=[]; for(var i=1;i<bpmBeats.length;i++) intv.push(bpmBeats[i]-bpmBeats[i-1]);
-      var ai=0; for(var i=0;i<intv.length;i++) ai+=intv[i]; ai/=intv.length;
-      el.textContent=Math.round(60000/ai);
-    } else el.textContent='--';
   }
 
   function updateBands(fd){
