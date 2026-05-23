@@ -414,7 +414,7 @@ body.theme-pastel footer{color:#c0b0e0;}
     ctx.shadowBlur=0;
     if(!audioCtx) return;
     var ny=audioCtx.sampleRate/2, fpb=ny/data.length;
-    var lbls=[100,250,500,1000,2000,4000,8000,16000];
+    var lbls=[250,1000,2000,4000,8000,16000];
     ctx.font=Math.round(8.5*DPR)+"px -apple-system,sans-serif"; ctx.textAlign='center';
     for(var li=0;li<lbls.length;li++){
       var freq=lbls[li], bin=freq/fpb; if(bin>=nb) continue;
