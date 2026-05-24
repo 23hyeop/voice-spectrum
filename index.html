@@ -273,9 +273,17 @@ body.theme-pastel footer{color:#c0b0e0;}
     if(!animId) clearCanvas();
   };
 
+  var AUDIO_CONSTRAINTS = {
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl:  false,
+    sampleRate:       48000,
+    channelCount:     2
+  };
+
   window.startSystemAudio = function(){
     setHint('화면 선택 후 <b>"시스템 오디오 공유"</b> 체크박스를 켜고 공유를 눌러주세요.');
-    navigator.mediaDevices.getDisplayMedia({audio:true, video:{width:1,height:1}})
+    navigator.mediaDevices.getDisplayMedia({audio: AUDIO_CONSTRAINTS, video:{width:1,height:1}})
       .then(function(s){
         stream = s;
         stream.getVideoTracks().forEach(function(t){ t.stop(); });
@@ -287,15 +295,15 @@ body.theme-pastel footer{color:#c0b0e0;}
 
   window.startMic = function(){
     setHint('');
-    navigator.mediaDevices.getUserMedia({audio:true, video:false})
+    navigator.mediaDevices.getUserMedia({audio: AUDIO_CONSTRAINTS, video:false})
       .then(function(s){ stream=s; initAudio(); })
       .catch(function(e){ setHint('마이크 오류: '+e.message,true); });
   };
 
   function initAudio(){
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: 48000});
     analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
+    analyser.fftSize = 4096;
     analyser.smoothingTimeConstant = 0.82;
     source = audioCtx.createMediaStreamSource(stream);
     source.connect(analyser);
@@ -329,7 +337,7 @@ body.theme-pastel footer{color:#c0b0e0;}
     ctx.fillStyle=t.bg; ctx.fillRect(0,0,W,H);
     ctx.strokeStyle=t.line; ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(0,midY); ctx.lineTo(W,midY); ctx.stroke();
-    var nb=Math.floor(data.length*0.65);
+    var nb=Math.floor(data.length*0.80);
     var tb=Math.floor(W/(14.0*DPR));
     var bs=W/tb, bw=bs*0.66, gx=(bs-bw)/2;
     for(var i=0;i<tb;i++){
@@ -377,7 +385,7 @@ body.theme-pastel footer{color:#c0b0e0;}
     ctx.fillStyle=t.bg; ctx.fillRect(0,0,W,H);
     ctx.strokeStyle=t.line; ctx.lineWidth=1;
     ctx.beginPath(); ctx.arc(cx,cy,baseR,0,Math.PI*2); ctx.stroke();
-    var nb=Math.floor(data.length*0.65);
+    var nb=Math.floor(data.length*0.80);
     var tb=Math.floor(W/(14.0*DPR));
     var aStep=(Math.PI*2)/tb;
     for(var i=0;i<tb;i++){
